@@ -43,18 +43,27 @@ from time import time
 
 import argparse
 from networks import Generator, Discriminator
-from data_loader import SimpleDataset
+from data_loader import SimpleDataset, CityMapDataset
+
+import warnings
+from PIL import Image
+
+warnings.simplefilter('ignore', Image.DecompressionBombWarning)
 
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--trainA', type=str, help='path to first training dataset',
-                    default='trainA')
+                    default='../datasets/trainA')
 parser.add_argument('--trainB', type=str, help='path to another training dataset',
-                    default='trainB')
+                    default='../datasets/trainB')
 parser.add_argument('--epochs', type=int, help='number of training epochs',
                     default=1)
 parser.add_argument('--weights', help='pre-counted weights for the model',
                     default=None)
+parser.add_argument('--save_weights', help='where to save weights',
+                    default='../weights')
+parser.add_argument('--datasize', type=int, help='size of a training dataset for 1 epoch',
+                    default=1000)
 
 args = parser.parse_args()
 
@@ -71,11 +80,9 @@ for img in os.listdir(args.trainB):
     B_files.append(os.path.join(args.trainB, img))
     
 print('Datasets lengths are %d and %d respectively' % (len(A_files),len(B_files)))
-length=len(B_files)
-
 
 A_data=SimpleDataset(A_files)
-B_data=SimpleDataset(B_files)
+B_data=CityMapDataset(B_files)
 
 g = Generator().to(device)
 f = Generator().to(device)
@@ -100,8 +107,8 @@ cycle_crit=nn.L1Loss()
 # шаг обучения будет выглядеть как-то так:
 torch.autograd.set_detect_anomaly(True)
 def train_step(x, y, batch_size=1):
-    x=x.to(device)
-    y=y.to(device)
+    x=x.to(device,dtype=torch.float)
+    y=y.to(device,dtype=torch.float)
     # сначала прогоняем батчи через генераторы туда и обратно
     y_fake=g(x)
     x_fake=f(y)
@@ -147,17 +154,19 @@ g.train()
 for epoch in range(args.epochs):
     t0=time()
     A_sampler=RandomSampler(A_data, replacement = True,
-                            num_samples = length)
+                            num_samples = args.datasize)
+    B_sampler=RandomSampler(B_data, replacement = True,
+                            num_samples = args.datasize)
     A=DataLoader(A_data, batch_size=1, sampler=A_sampler, num_workers=2, pin_memory=True)
-    B=DataLoader(B_data, batch_size=1, shuffle=True, num_workers=2, pin_memory=True)
+    B=DataLoader(B_data, batch_size=1, sampler=B_sampler, num_workers=2, pin_memory=True)
     cl=0
     gl=0
     print('Epoch %d :' % epoch)
     i=0
     for a_pic, b_pic in zip(A, B):
         loss1, loss2=train_step(a_pic, b_pic)
-        cl += loss1/length
-        gl += loss2/length
+        cl += loss1/args.datasize
+        gl += loss2/args.datasize
         i+=1
     #    if i>1000:
     #        break
@@ -165,12 +174,11 @@ for epoch in range(args.epochs):
     print('Cycle loss: %f' % cl)
     print('GAN loss: %f' % gl)
     print('Time: %f seconds' % t, flush=True)
-    torch.save({
-                'g_state_dict': g.state_dict(),
-                'f_state_dict': f.state_dict(),
-                'dg_state_dict': dg.state_dict(),
-                'df_state_dict': df.state_dict()
-                }, args.weights)
+    torch.save(g.state_dict(),os.path.join(args.save_weights, 'g_weights.pt'))
+    torch.save(f.state_dict(),os.path.join(args.save_weights, 'f_weights.pt'))
+    torch.save(dg.state_dict(),os.path.join(args.save_weights, 'dg_weights.pt'))
+    torch.save(df.state_dict(),os.path.join(args.save_weights, 'df_weights.pt'))
+
     
 
 
