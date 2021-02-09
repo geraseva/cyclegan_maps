@@ -82,7 +82,7 @@ for img in os.listdir(args.trainB):
 print('Datasets lengths are %d and %d respectively' % (len(A_files),len(B_files)))
 
 A_data=SimpleDataset(A_files)
-B_data=CityMapDataset(B_files)
+B_data=SimpleDataset(B_files)
 
 g = Generator().to(device)
 f = Generator().to(device)
@@ -91,11 +91,10 @@ df = Discriminator().to(device)
 
 
 if args.weights != None:
-    checkpoint = torch.load(args.weights)
-    g.load_state_dict(checkpoint['g_state_dict'])
-    f.load_state_dict(checkpoint['f_state_dict'])
-    dg.load_state_dict(checkpoint['dg_state_dict'])
-    df.load_state_dict(checkpoint['df_state_dict'])
+    g.load_state_dict(torch.load(os.path.join(args.weights,'g_weights.pt')))
+    f.load_state_dict(torch.load(os.path.join(args.weights,'f_weights.pt')))
+    dg.load_state_dict(torch.load(os.path.join(args.weights,'dg_weights.pt')))
+    df.load_state_dict(torch.load(os.path.join(args.weights,'df_weights.pt')))
 
 
 cycle_opt=torch.optim.Adam(itertools.chain(g.parameters(), f.parameters()), lr=0.0002)
