@@ -48,7 +48,7 @@ from data_loader import SimpleDataset, CityMapDataset
 import warnings
 from PIL import Image
 
-warnings.simplefilter('ignore', Image.DecompressionBombWarning)
+warnings.simplefilter('ignore', Image.DecompressionBombWarning) 
 
 
 parser = argparse.ArgumentParser()
@@ -84,12 +84,13 @@ print('Datasets lengths are %d and %d respectively' % (len(A_files),len(B_files)
 A_data=SimpleDataset(A_files)
 B_data=SimpleDataset(B_files)
 
+# создаем генераторы и дискриминаторы
 g = Generator().to(device)
 f = Generator().to(device)
 dg = Discriminator().to(device)
 df = Discriminator().to(device)
 
-
+# инициализируем веса, если есть
 if args.weights != None:
     g.load_state_dict(torch.load(os.path.join(args.weights,'g_weights.pt')))
     f.load_state_dict(torch.load(os.path.join(args.weights,'f_weights.pt')))
@@ -152,12 +153,18 @@ g.train()
 
 for epoch in range(args.epochs):
     t0=time()
-    A_sampler=RandomSampler(A_data, replacement = True,
+    if args.datasize==len(A_files):
+        A=DataLoader(A_data, batch_size=1, shuffle=True, num_workers=2, pin_memory=True)
+    else:
+        A_sampler=RandomSampler(A_data, replacement = True,
                             num_samples = args.datasize)
-    B_sampler=RandomSampler(B_data, replacement = True,
+        A=DataLoader(A_data, batch_size=1, sampler=A_sampler, num_workers=2, pin_memory=True)
+    if args.datasize==len(B_files):
+        B=DataLoader(B_data, batch_size=1, shuffle=True, num_workers=2, pin_memory=True)
+    else:
+        B_sampler=RandomSampler(B_data, replacement = True,
                             num_samples = args.datasize)
-    A=DataLoader(A_data, batch_size=1, sampler=A_sampler, num_workers=2, pin_memory=True)
-    B=DataLoader(B_data, batch_size=1, sampler=B_sampler, num_workers=2, pin_memory=True)
+        B=DataLoader(B_data, batch_size=1, sampler=B_sampler, num_workers=2, pin_memory=True)
     cl=0
     gl=0
     print('Epoch %d :' % epoch)
@@ -173,6 +180,9 @@ for epoch in range(args.epochs):
     print('Cycle loss: %f' % cl)
     print('GAN loss: %f' % gl)
     print('Time: %f seconds' % t, flush=True)
+    
+    #Я сочла нужным сохранять веса на каждой эпохе, 
+    #на случай прерывания программы
     torch.save(g.state_dict(),os.path.join(args.save_weights, 'g_weights.pt'))
     torch.save(f.state_dict(),os.path.join(args.save_weights, 'f_weights.pt'))
     torch.save(dg.state_dict(),os.path.join(args.save_weights, 'dg_weights.pt'))
