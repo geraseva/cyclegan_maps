@@ -155,17 +155,17 @@ g.train()
 
 for epoch in range(args.epochs):
     t0=time()
-    length=args.datasize
-    A_sampler=RandomSampler(A_data, replacement = True,
-                            num_samples = args.datasize)
-    A=DataLoader(A_data, batch_size=1, sampler=A_sampler, num_workers=2, pin_memory=True)
     if args.datasize==None:
         length=len(B_files)
         B=DataLoader(B_data, batch_size=1, shuffle=True, num_workers=2, pin_memory=True)
     else:
+        length=args.datasize
         B_sampler=RandomSampler(B_data, replacement = True,
-                            num_samples = args.datasize)
+                            num_samples = length)
         B=DataLoader(B_data, batch_size=1, sampler=B_sampler, num_workers=2, pin_memory=True)
+    A_sampler=RandomSampler(A_data, replacement = True,
+                            num_samples = length)
+    A=DataLoader(A_data, batch_size=1, sampler=A_sampler, num_workers=2, pin_memory=True)
     cl=0
     gl=0
     print('Epoch %d :' % epoch)
