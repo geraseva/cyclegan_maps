@@ -15,6 +15,7 @@ from skimage.color import rgba2rgb
 
 from random import randint
 
+# Это обычный загрузчик для уже обработанных картинок 600 на 600
 class SimpleDataset(Dataset):
     def __init__(self, files):
         super(SimpleDataset).__init__()
@@ -29,9 +30,12 @@ class SimpleDataset(Dataset):
                                transforms.RandomHorizontalFlip(),
                                transforms.RandomVerticalFlip()])
         x=imread(self.files[index])
-        #x=np.rollaxis(x ,2, 0)
         x=tr(x)
         return x
+        
+# Это загрузчик для картинок произвольного размера, 
+# он рандомно вырезает из них квадрат и приводит его к размеру 600 на 600.
+# Он плохо работал, и я им почти не пользовалась
 class CityMapDataset(Dataset):
     def __init__(self, files):
         super(CityMapDataset).__init__()
@@ -62,6 +66,5 @@ class CityMapDataset(Dataset):
                                transforms.RandomHorizontalFlip(),
                                transforms.RandomVerticalFlip()])
 
-        #x=np.rollaxis(x ,2, 0)
         x=tr(x)
         return x
