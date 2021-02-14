@@ -63,7 +63,9 @@ parser.add_argument('--weights', help='pre-counted weights for the model',
 parser.add_argument('--save_weights', help='where to save weights',
                     default='../weights')
 parser.add_argument('--datasize', type=int, help='size of a training dataset for 1 epoch',
-                    default=1000)
+                    default=None)
+parser.add_argument('--lr', type=float, help='learning rate',
+                    default=0.0001)
 
 args = parser.parse_args()
 
@@ -98,8 +100,8 @@ if args.weights != None:
     df.load_state_dict(torch.load(os.path.join(args.weights,'df_weights.pt')))
 
 
-cycle_opt=torch.optim.Adam(itertools.chain(g.parameters(), f.parameters()), lr=0.0002)
-gan_opt=torch.optim.Adam(itertools.chain(dg.parameters(), df.parameters()), lr=0.0002)
+cycle_opt=torch.optim.Adam(itertools.chain(g.parameters(), f.parameters()), lr=args.lr)
+gan_opt=torch.optim.Adam(itertools.chain(dg.parameters(), df.parameters()), lr=args.lr/2)
 
 gan_crit=nn.BCEWithLogitsLoss()
 cycle_crit=nn.L1Loss()
@@ -153,13 +155,12 @@ g.train()
 
 for epoch in range(args.epochs):
     t0=time()
-    if args.datasize==len(A_files):
-        A=DataLoader(A_data, batch_size=1, shuffle=True, num_workers=2, pin_memory=True)
-    else:
-        A_sampler=RandomSampler(A_data, replacement = True,
+    length=args.datasize
+    A_sampler=RandomSampler(A_data, replacement = True,
                             num_samples = args.datasize)
-        A=DataLoader(A_data, batch_size=1, sampler=A_sampler, num_workers=2, pin_memory=True)
-    if args.datasize==len(B_files):
+    A=DataLoader(A_data, batch_size=1, sampler=A_sampler, num_workers=2, pin_memory=True)
+    if args.datasize==None:
+        length=len(B_files)
         B=DataLoader(B_data, batch_size=1, shuffle=True, num_workers=2, pin_memory=True)
     else:
         B_sampler=RandomSampler(B_data, replacement = True,
@@ -171,8 +172,8 @@ for epoch in range(args.epochs):
     i=0
     for a_pic, b_pic in zip(A, B):
         loss1, loss2=train_step(a_pic, b_pic)
-        cl += loss1/args.datasize
-        gl += loss2/args.datasize
+        cl += loss1/length
+        gl += loss2/length
         i+=1
     #    if i>1000:
     #        break
